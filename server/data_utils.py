@@ -1,8 +1,8 @@
-from file_utils import open_data, save_data, get_data_filepath
+from file_utils import open_data, save_data
 import requests
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
 
 
 def fetch_data(symbol, output_size="full", api_key="demo"):
@@ -43,12 +43,15 @@ def fetch_data(symbol, output_size="full", api_key="demo"):
     return time_series_df
 
 
+# # #
+
+
 def create_window(data, lookback):
     X, y = [], []
 
     for i in range(len(data) - lookback - 1):
-        X.append(data["return"].iloc[i : i + lookback].values)
-        y.append(data["return"].iloc[i + lookback : i + lookback + 1].values)
+        X.append(data.iloc[i : i + lookback].values)
+        y.append(data.iloc[i + lookback : i + lookback + 1])
 
     return np.array(X), np.array(y)
 
@@ -59,12 +62,12 @@ def temporal_split(data, split_size):
     return data[:split], data[split:]
 
 
-def prepare_data(data):
+def prepare_data(data, lookback):
     processed_data = data.copy()
-    processed_data["return"] = processed_data["close"].pct_change()
-    processed_data = processed_data.dropna(subset=["return"])
 
-    X, y = create_window(processed_data, 5)
+    X, y = create_window(processed_data["close"], lookback)
+
+    X = X.reshape(X.shape[0], X.shape[1], 1)
 
     X_train_val, X_test = temporal_split(X, 0.9)
     X_train, X_val = temporal_split(X_train_val, 0.9)
@@ -72,4 +75,18 @@ def prepare_data(data):
     y_train_val, y_test = temporal_split(y, 0.9)
     y_train, y_val = temporal_split(y_train_val, 0.9)
 
-    return (X_train, X_val, X_test, y_train, y_val, y_test, processed_data)
+    scaler = MinMaxScaler(feature_range=(0, 1))
+
+    X_train = scaler.fit_transform(X_train.reshape(-1, 1)).reshape(X_train.shape)
+    X_val = scaler.transform(X_val.reshape(-1, 1)).reshape(X_val.shape)
+    X_test = scaler.transform(X_test.reshape(-1, 1)).reshape(X_test.shape)
+
+    y_train = scaler.fit_transform(y_train)
+    y_val = scaler.transform(y_val)
+    y_test = scaler.transform(y_test)
+
+    training_data = (X_train, y_train)
+    validation_data = (X_val, y_val)
+    testing_data = (X_test, y_test)
+
+    return (training_data, validation_data, testing_data, scaler)
