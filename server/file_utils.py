@@ -3,9 +3,9 @@ import json
 import os
 
 
-def open_data(filename):
+def open_data(symbol, filename):
     today = datetime.now().strftime("%Y-%m-%d")
-    path = f"data/{today}"
+    path = f"data/{today}/{symbol}"
     file = f"{path}/{filename}.json"
 
     if not os.path.exists(path):
@@ -18,9 +18,9 @@ def open_data(filename):
         return None
 
 
-def save_data(data, filename):
+def save_data(data, symbol, filename):
     today = datetime.now().strftime("%Y-%m-%d")
-    path = f"data/{today}"
+    path = f"data/{today}/{symbol}"
     file = f"{path}/{filename}.json"
 
     if not os.path.exists(path):
@@ -28,3 +28,10 @@ def save_data(data, filename):
 
     with open(file, "w") as f:
         json.dump(data, f)
+
+
+def get_data_filepath(symbol):
+    today = datetime.now().strftime("%Y-%m-%d")
+    path = f"data/{today}/{symbol}"
+
+    return path
