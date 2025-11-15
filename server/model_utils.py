@@ -8,7 +8,6 @@ from model import TransformerEncoder, LearnedPositionalEncoding
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from tensorflow.keras.losses import Huber
 from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
 from file_utils import get_data_filepath
@@ -73,13 +72,14 @@ def train_model(model, training_data, validation_data):
     return model
 
 
-def evaluate_model(model, testing_data, symbol, scaler):
+def evaluate_model(model, testing_data, symbol, scalers):
     X_test, y_test = testing_data
+    X_scaler, y_scaler = scalers
 
     y_pred = model.predict(X_test)
 
-    y_pred_inverse = scaler.inverse_transform(y_pred.reshape(-1, 1)).flatten()
-    y_true_inverse = scaler.inverse_transform(y_test.reshape(-1, 1)).flatten()
+    y_pred_inverse = y_scaler.inverse_transform(y_pred.reshape(-1, 1)).flatten()
+    y_true_inverse = y_scaler.inverse_transform(y_test.reshape(-1, 1)).flatten()
 
     r2 = r2_score(y_true_inverse, y_pred_inverse)
 

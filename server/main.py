@@ -21,7 +21,7 @@ def main():
 
     lookback = CONFIG["lookback"]
     print("preparing data...")
-    (training_data, validation_data, testing_data, scaler) = prepare_data(
+    (training_data, validation_data, testing_data, scalers) = prepare_data(
         data, lookback=lookback
     )
     print("data prepared successfully")
@@ -45,7 +45,7 @@ def main():
 
     print("evaluating model...")
     evaluate_model(
-        trained_model, testing_data=testing_data, symbol=symbol, scaler=scaler
+        trained_model, testing_data=testing_data, symbol=symbol, scalers=scalers
     )
     print("")
 

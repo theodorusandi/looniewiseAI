@@ -49,7 +49,7 @@ def fetch_data(symbol, output_size="full", api_key="demo"):
 def create_window(data, lookback):
     X, y = [], []
 
-    for i in range(len(data) - lookback - 1):
+    for i in range(len(data) - lookback):
         X.append(data.iloc[i : i + lookback].values)
         y.append(data.iloc[i + lookback : i + lookback + 1])
 
@@ -75,18 +75,21 @@ def prepare_data(data, lookback):
     y_train_val, y_test = temporal_split(y, 0.9)
     y_train, y_val = temporal_split(y_train_val, 0.9)
 
-    scaler = MinMaxScaler(feature_range=(0, 1))
+    X_scaler = MinMaxScaler(feature_range=(0, 1))
 
-    X_train = scaler.fit_transform(X_train.reshape(-1, 1)).reshape(X_train.shape)
-    X_val = scaler.transform(X_val.reshape(-1, 1)).reshape(X_val.shape)
-    X_test = scaler.transform(X_test.reshape(-1, 1)).reshape(X_test.shape)
+    X_train = X_scaler.fit_transform(X_train.reshape(-1, 1)).reshape(X_train.shape)
+    X_val = X_scaler.transform(X_val.reshape(-1, 1)).reshape(X_val.shape)
+    X_test = X_scaler.transform(X_test.reshape(-1, 1)).reshape(X_test.shape)
 
-    y_train = scaler.fit_transform(y_train)
-    y_val = scaler.transform(y_val)
-    y_test = scaler.transform(y_test)
+    y_scaler = MinMaxScaler(feature_range=(0, 1))
+
+    y_train = y_scaler.fit_transform(y_train)
+    y_val = y_scaler.transform(y_val)
+    y_test = y_scaler.transform(y_test)
 
     training_data = (X_train, y_train)
     validation_data = (X_val, y_val)
     testing_data = (X_test, y_test)
+    scalers = (X_scaler, y_scaler)
 
-    return (training_data, validation_data, testing_data, scaler)
+    return (training_data, validation_data, testing_data, scalers)
