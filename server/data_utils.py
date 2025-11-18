@@ -43,7 +43,7 @@ def fetch_data(symbol, output_size="full", api_key="demo"):
     return time_series_df
 
 
-# # #
+# # # Data Preparation # # #
 
 
 def create_window(data, lookback):
@@ -64,9 +64,11 @@ def temporal_split(data, split_size):
 
 def prepare_data(data, lookback):
     processed_data = data.copy()
+    processed_data = processed_data["close"].dropna()
 
-    X, y = create_window(processed_data["close"], lookback)
+    X, y = create_window(processed_data, lookback)
 
+    # (num of samples, lookback, num of features)
     X = X.reshape(X.shape[0], X.shape[1], 1)
 
     X_train_val, X_test = temporal_split(X, 0.9)
@@ -77,9 +79,9 @@ def prepare_data(data, lookback):
 
     X_scaler = MinMaxScaler(feature_range=(0, 1))
 
-    X_train_2d = X_train.reshape(-1, 1)
-    X_val_2d = X_val.reshape(-1, 1)
-    X_test_2d = X_test.reshape(-1, 1)
+    X_train_2d = X_train.reshape(X_train.shape[0] * X_train.shape[1], X_train.shape[2])
+    X_val_2d = X_val.reshape(X_val.shape[0] * X_val.shape[1], X_val.shape[2])
+    X_test_2d = X_test.reshape(X_test.shape[0] * X_test.shape[1], X_test.shape[2])
 
     X_train = X_scaler.fit_transform(X_train_2d).reshape(X_train.shape)
     X_val = X_scaler.transform(X_val_2d).reshape(X_val.shape)
@@ -98,6 +100,5 @@ def prepare_data(data, lookback):
     training_data = (X_train, y_train)
     validation_data = (X_val, y_val)
     testing_data = (X_test, y_test)
-    input_shape = (lookback, X.shape[-1])
 
-    return (training_data, validation_data, testing_data, input_shape, y_scaler)
+    return (training_data, validation_data, testing_data, y_scaler)
