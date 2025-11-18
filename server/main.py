@@ -5,7 +5,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 from config import CONFIG
 from data_utils import fetch_data, prepare_data
-from model_utils import build_model, train_model, evaluate_model
+from model_utils import build_model, train_model, evaluate_model, predict_future
 
 
 def main():
@@ -21,14 +21,13 @@ def main():
 
     lookback = CONFIG["lookback"]
     print("preparing data...")
-    (training_data, validation_data, testing_data, scalers) = prepare_data(
-        data, lookback=lookback
+    (training_data, validation_data, testing_data, input_shape, y_scaler) = (
+        prepare_data(data, lookback=lookback)
     )
     print("data prepared successfully")
 
     print("=" * 50)
 
-    input_shape = (lookback, 1)
     print("building model...")
     model = build_model(input_shape)
     print("model built successfully")
@@ -45,9 +44,19 @@ def main():
 
     print("evaluating model...")
     evaluate_model(
-        trained_model, testing_data=testing_data, symbol=symbol, scalers=scalers
+        trained_model, testing_data=testing_data, symbol=symbol, scaler=y_scaler
     )
     print("")
+
+    print("=" * 50)
+    predict_future(
+        trained_model,
+        data=data,
+        lookback=lookback,
+        symbol=symbol,
+        scaler=y_scaler,
+    )
+    print("predicting future values...")
 
 
 if __name__ == "__main__":
