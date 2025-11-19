@@ -1,11 +1,16 @@
-from file_utils import open_data, save_data
 import requests
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import RobustScaler
+
+from file_utils import open_data, save_data
 
 
-def fetch_data(symbol, output_size="full", api_key="demo"):
+def fetch_data(
+    symbol: str, output_size: str = "full", api_key: str = "demo"
+) -> pd.DataFrame:
+    print(f"Fetching data for symbol: {symbol}")
+
     if not symbol:
         raise ValueError("symbol parameter is required and cannot be empty")
 
@@ -14,8 +19,8 @@ def fetch_data(symbol, output_size="full", api_key="demo"):
     data = open_data(symbol, filename)
 
     if not data:
-        url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize={output_size}&apikey={api_key}"
         print(f"Fetching data for {symbol} from API...")
+        url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize={output_size}&apikey={api_key}"
         r = requests.get(url)
         if r.status_code != 200:
             raise Exception(f"API request failed with status code {r.status_code}")
@@ -44,49 +49,37 @@ def fetch_data(symbol, output_size="full", api_key="demo"):
 
 
 # # # Data Preparation # # #
-def temporal_split(data, split_size):
+def split_data(data: pd.DataFrame, split_size: float = 0.8):
     split = int(len(data) * split_size)
+    return data.iloc[:split], data.iloc[split:]
 
-    return data[:split], data[split:]
 
-
-def create_window(data, lookback):
+def create_window(data, lookback: int):
     X, y = [], []
 
     for i in range(len(data) - lookback):
-        X.append(data.iloc[i : i + lookback].values)
-        y.append(data.iloc[i + lookback])
+        X.append(data[i : i + lookback])
+        y.append(data[i + lookback])
 
     return np.array(X), np.array(y)
 
 
-def prepare_data(data, lookback):
-    processed_data = data.copy()["close"].dropna()
+def prepare_data(data: pd.DataFrame, lookback: int):
+    processed_data = data.copy()
 
-    train_val_data, test_data = temporal_split(processed_data, 0.9)
-    train_data, val_data = temporal_split(train_val_data, 0.9)
+    processed_data = processed_data[["close"]].dropna()
 
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaler.fit(train_data.values.reshape(-1, 1))
+    training_data, test_set = split_data(processed_data, split_size=0.9)
+    training_set, validation_set = split_data(training_data, split_size=0.9)
 
-    X_train, y_train = create_window(train_data, lookback)
-    X_val, y_val = create_window(val_data, lookback)
-    X_test, y_test = create_window(test_data, lookback)
+    scaler = RobustScaler().fit(training_set)
 
-    X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], 1)
-    X_val = X_val.reshape(X_val.shape[0], X_val.shape[1], 1)
-    X_test = X_test.reshape(X_test.shape[0], X_test.shape[1], 1)
+    training_set = scaler.transform(training_set)
+    validation_set = scaler.transform(validation_set)
+    test_set = scaler.transform(test_set)
 
-    X_train_2d = X_train.reshape(-1, 1)
-    X_val_2d = X_val.reshape(-1, 1)
-    X_test_2d = X_test.reshape(-1, 1)
+    X_train, y_train = create_window(training_set, lookback)
+    X_val, y_val = create_window(validation_set, lookback)
+    X_test, y_test = create_window(test_set, lookback)
 
-    X_train = scaler.transform(X_train_2d).reshape(X_train.shape)
-    X_val = scaler.transform(X_val_2d).reshape(X_val.shape)
-    X_test = scaler.transform(X_test_2d).reshape(X_test.shape)
-
-    y_train = scaler.transform(y_train.reshape(-1, 1)).flatten()
-    y_val = scaler.transform(y_val.reshape(-1, 1)).flatten()
-    y_test = scaler.transform(y_test.reshape(-1, 1)).flatten()
-
-    return ((X_train, y_train), (X_val, y_val), (X_test, y_test), scaler)
+    return (X_train, y_train), (X_val, y_val), (X_test, y_test), scaler

@@ -16,32 +16,32 @@ def main():
 
     data = fetch_data(symbol, output_size=output_size, api_key=api_key)
 
-    (training_data, validation_data, testing_data, scaler) = prepare_data(
+    (X_train, y_train), (X_val, y_val), (X_test, y_test), scaler = prepare_data(
         data, lookback=lookback
     )
 
-    input_shape = (lookback, 1)
+    # input_shape = (lookback, 1)
 
-    model = build_model(input_shape)
+    # model = build_model(input_shape)
 
-    trained_model = train_model(
-        model, training_data=training_data, validation_data=validation_data
-    )
+    # trained_model = train_model(
+    #     model, training_data=training_data, validation_data=validation_data
+    # )
 
-    r2 = evaluate_model(
-        trained_model, testing_data=testing_data, symbol=symbol, scaler=scaler
-    )
-    print("r2 score on test data: {:.4f}".format(r2))
+    # r2 = evaluate_model(
+    #     trained_model, testing_data=testing_data, symbol=symbol, scaler=scaler
+    # )
+    # print("r2 score on test data: {:.4f}".format(r2))
 
-    print("=" * 50)
-    predict_future(
-        trained_model,
-        data=data,
-        lookback=lookback,
-        symbol=symbol,
-        scaler=scaler,
-    )
-    print("predicting future values...")
+    # print("=" * 50)
+    # predict_future(
+    #     trained_model,
+    #     data=data,
+    #     lookback=lookback,
+    #     symbol=symbol,
+    #     scaler=scaler,
+    # )
+    # print("predicting future values...")
 
 
 if __name__ == "__main__":
