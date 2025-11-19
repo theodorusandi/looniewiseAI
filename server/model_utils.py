@@ -17,6 +17,8 @@ from model import TransformerEncoder, LearnedPositionalEncoding
 
 
 def build_model(input_shape):
+    print("Building model...")
+
     embed_dim = 64
     num_heads = 4
     ff_dim = 256
@@ -50,12 +52,12 @@ def build_model(input_shape):
 
 
 def tune_batch_size(training_data, validation_data, callbacks):
+    print("Tuning batch size...")
+
     best_batch_size = None
     X_train, y_train = training_data
 
-    results = {}
-
-    print("Tuning batch size...")
+    results: dict = {}
 
     for batch_size in [8, 16]:
         print(f"Testing batch size: {batch_size}")
@@ -75,17 +77,18 @@ def tune_batch_size(training_data, validation_data, callbacks):
         best_val_loss = min(history.history["val_loss"])
         results[batch_size] = best_val_loss
 
-        print(
-            f"Average validation loss for batch size {batch_size}: {best_val_loss:.4f}"
-        )
+        print(f"Batch size: {batch_size}, Best Val Loss: {best_val_loss:.3f}")
 
-    best_batch_size = min(results, key=results.get)
+    best_batch_size = min(results, key=results.get)  # type: ignore
+
     print(f"Best batch size: {best_batch_size}")
 
     return best_batch_size
 
 
 def train_model(model, training_data, validation_data):
+    print("Training model...")
+
     epochs = 100
 
     callbacks = [
@@ -99,13 +102,11 @@ def train_model(model, training_data, validation_data):
         ),
     ]
 
-    # batch_size = tune_batch_size(
-    #     training_data=training_data,
-    #     validation_data=validation_data,
-    #     callbacks=callbacks,
-    # )
-
-    batch_size = 8
+    batch_size = tune_batch_size(
+        training_data=training_data,
+        validation_data=validation_data,
+        callbacks=callbacks,
+    )
 
     X_train, y_train = training_data
 
@@ -123,6 +124,8 @@ def train_model(model, training_data, validation_data):
 
 
 def evaluate_model(model, testing_data, symbol, scaler):
+    print("Evaluating model...")
+
     X_test, y_test = testing_data
 
     y_pred = model.predict(X_test)
@@ -132,7 +135,6 @@ def evaluate_model(model, testing_data, symbol, scaler):
 
     r2 = r2_score(y_test_inverse, y_pred_inverse)
 
-    plt.figure(figsize=(10, 5))
     plt.plot(y_test_inverse, label="True Values", alpha=0.7)
     plt.plot(y_pred_inverse, label="Predicted Values", linestyle="--")
     plt.title(f"True vs Predicted Values")
@@ -141,21 +143,18 @@ def evaluate_model(model, testing_data, symbol, scaler):
     path = get_data_filepath(symbol)
     plt.savefig(f"{path}/evaluation.png", dpi=300, bbox_inches="tight")
 
-    print(f"R² Score: {r2:.4f}")
+    print(f"R² Score: {r2:.3f}")
 
     return r2
 
 
 def predict_future(
     model,
-    data,
-    lookback,
+    last_sequence,
     symbol,
     scaler,
 ):
-    close_data = data["close"].values[-lookback:]
-
-    input_sequence = scaler.transform(close_data.reshape(-1, 1)).reshape(1, lookback, 1)
+    print("Predicting future values with uncertainty estimation...")
 
     n_simulations = 100
     num_future_steps = 5
@@ -164,7 +163,7 @@ def predict_future(
 
     for _ in range(n_simulations):
         predicted_values = []
-        current_sequence = input_sequence.copy()
+        current_sequence = last_sequence.copy()
 
         for _ in range(num_future_steps):
             next_value = model(current_sequence, training=True).numpy().flatten()[0]
@@ -178,7 +177,6 @@ def predict_future(
     all_predictions = np.array(all_predictions)
 
     mean_predictions = np.mean(all_predictions, axis=0)
-    std_predictions = np.std(all_predictions, axis=0)
     ci_lower = np.percentile(all_predictions, 2.5, axis=0)
     ci_upper = np.percentile(all_predictions, 97.5, axis=0)
 
@@ -225,10 +223,3 @@ def predict_future(
     plt.tight_layout()
     path = get_data_filepath(symbol)
     plt.savefig(f"{path}/prediction.png", dpi=300, bbox_inches="tight")
-
-    return {
-        "mean": mean_predictions_inverse,
-        "ci_lower": ci_lower_inverse,
-        "ci_upper": ci_upper_inverse,
-        "std": std_predictions,
-    }

@@ -16,8 +16,8 @@ def main():
 
     data = fetch_data(symbol, output_size=output_size, api_key=api_key)
 
-    (X_train, y_train), (X_val, y_val), (X_test, y_test), scaler = prepare_data(
-        data, lookback=lookback
+    full_set, (X_train, y_train), (X_val, y_val), (X_test, y_test), scaler = (
+        prepare_data(data, lookback=lookback)
     )
 
     # (lookback, features)
@@ -25,24 +25,24 @@ def main():
 
     model = build_model(input_shape)
 
-    # trained_model = train_model(
-    #     model, training_data=training_data, validation_data=validation_data
-    # )
+    trained_model = train_model(
+        model, training_data=(X_train, y_train), validation_data=(X_val, y_val)
+    )
 
-    # r2 = evaluate_model(
-    #     trained_model, testing_data=testing_data, symbol=symbol, scaler=scaler
-    # )
-    # print("r2 score on test data: {:.4f}".format(r2))
+    r2 = evaluate_model(
+        trained_model, testing_data=(X_test, y_test), symbol=symbol, scaler=scaler
+    )
 
-    # print("=" * 50)
-    # predict_future(
-    #     trained_model,
-    #     data=data,
-    #     lookback=lookback,
-    #     symbol=symbol,
-    #     scaler=scaler,
-    # )
-    # print("predicting future values...")
+    if r2 > 0.55:
+        last_sequence = full_set[-lookback:].reshape(1, lookback, 1)
+        predict_future(
+            trained_model,
+            last_sequence=last_sequence,
+            symbol=symbol,
+            scaler=scaler,
+        )
+    else:
+        print(f"Model R² score {r2:.3f} is below threshold. Future prediction skipped.")
 
 
 if __name__ == "__main__":

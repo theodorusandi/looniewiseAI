@@ -74,6 +74,7 @@ def prepare_data(data: pd.DataFrame, lookback: int):
 
     scaler = RobustScaler().fit(training_set)
 
+    full_set = scaler.transform(processed_data)
     training_set = scaler.transform(training_set)
     validation_set = scaler.transform(validation_set)
     test_set = scaler.transform(test_set)
@@ -82,4 +83,4 @@ def prepare_data(data: pd.DataFrame, lookback: int):
     X_val, y_val = create_window(validation_set, lookback)
     X_test, y_test = create_window(test_set, lookback)
 
-    return (X_train, y_train), (X_val, y_val), (X_test, y_test), scaler
+    return full_set, (X_train, y_train), (X_val, y_val), (X_test, y_test), scaler
