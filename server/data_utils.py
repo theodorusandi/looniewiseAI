@@ -44,6 +44,10 @@ def fetch_data(symbol, output_size="full", api_key="demo"):
 
 
 # # # Data Preparation # # #
+def temporal_split(data, split_size):
+    split = int(len(data) * split_size)
+
+    return data[:split], data[split:]
 
 
 def create_window(data, lookback):
@@ -56,49 +60,33 @@ def create_window(data, lookback):
     return np.array(X), np.array(y)
 
 
-def temporal_split(data, split_size):
-    split = int(len(data) * split_size)
-
-    return data[:split], data[split:]
-
-
 def prepare_data(data, lookback):
-    processed_data = data.copy()
-    processed_data = processed_data["close"].dropna()
+    processed_data = data.copy()["close"].dropna()
 
-    X, y = create_window(processed_data, lookback)
+    train_val_data, test_data = temporal_split(processed_data, 0.9)
+    train_data, val_data = temporal_split(train_val_data, 0.9)
 
-    # (num of samples, lookback, num of features)
-    X = X.reshape(X.shape[0], X.shape[1], 1)
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaler.fit(train_data.values.reshape(-1, 1))
 
-    X_train_val, X_test = temporal_split(X, 0.9)
-    X_train, X_val = temporal_split(X_train_val, 0.9)
+    X_train, y_train = create_window(train_data, lookback)
+    X_val, y_val = create_window(val_data, lookback)
+    X_test, y_test = create_window(test_data, lookback)
 
-    y_train_val, y_test = temporal_split(y, 0.9)
-    y_train, y_val = temporal_split(y_train_val, 0.9)
+    X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], 1)
+    X_val = X_val.reshape(X_val.shape[0], X_val.shape[1], 1)
+    X_test = X_test.reshape(X_test.shape[0], X_test.shape[1], 1)
 
-    X_scaler = MinMaxScaler(feature_range=(0, 1))
+    X_train_2d = X_train.reshape(-1, 1)
+    X_val_2d = X_val.reshape(-1, 1)
+    X_test_2d = X_test.reshape(-1, 1)
 
-    X_train_2d = X_train.reshape(X_train.shape[0] * X_train.shape[1], X_train.shape[2])
-    X_val_2d = X_val.reshape(X_val.shape[0] * X_val.shape[1], X_val.shape[2])
-    X_test_2d = X_test.reshape(X_test.shape[0] * X_test.shape[1], X_test.shape[2])
+    X_train = scaler.transform(X_train_2d).reshape(X_train.shape)
+    X_val = scaler.transform(X_val_2d).reshape(X_val.shape)
+    X_test = scaler.transform(X_test_2d).reshape(X_test.shape)
 
-    X_train = X_scaler.fit_transform(X_train_2d).reshape(X_train.shape)
-    X_val = X_scaler.transform(X_val_2d).reshape(X_val.shape)
-    X_test = X_scaler.transform(X_test_2d).reshape(X_test.shape)
+    y_train = scaler.transform(y_train.reshape(-1, 1)).flatten()
+    y_val = scaler.transform(y_val.reshape(-1, 1)).flatten()
+    y_test = scaler.transform(y_test.reshape(-1, 1)).flatten()
 
-    y_scaler = MinMaxScaler(feature_range=(0, 1))
-
-    y_train_2d = y_train.reshape(-1, 1)
-    y_val_2d = y_val.reshape(-1, 1)
-    y_test_2d = y_test.reshape(-1, 1)
-
-    y_train = y_scaler.fit_transform(y_train_2d).flatten()
-    y_val = y_scaler.transform(y_val_2d).flatten()
-    y_test = y_scaler.transform(y_test_2d).flatten()
-
-    training_data = (X_train, y_train)
-    validation_data = (X_val, y_val)
-    testing_data = (X_test, y_test)
-
-    return (training_data, validation_data, testing_data, y_scaler)
+    return ((X_train, y_train), (X_val, y_val), (X_test, y_test), scaler)

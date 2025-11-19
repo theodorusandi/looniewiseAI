@@ -14,50 +14,34 @@ def main():
     api_key = CONFIG["api_key"]
     lookback = CONFIG["lookback"]
 
-    print("fetching data...")
     data = fetch_data(symbol, output_size=output_size, api_key=api_key)
-    print("data fetched successfully")
+
+    (training_data, validation_data, testing_data, scaler) = prepare_data(
+        data, lookback=lookback
+    )
+
+    input_shape = (lookback, 1)
+
+    model = build_model(input_shape)
+
+    trained_model = train_model(
+        model, training_data=training_data, validation_data=validation_data
+    )
+
+    r2 = evaluate_model(
+        trained_model, testing_data=testing_data, symbol=symbol, scaler=scaler
+    )
+    print("r2 score on test data: {:.4f}".format(r2))
 
     print("=" * 50)
-
-    print("preparing data...")
-    # (training_data, validation_data, testing_data, input_shape, y_scaler) = (
-    #     prepare_data(data, lookback=lookback)
-    # )
-    prepare_data(data, lookback=lookback)
-    print("data prepared successfully")
-
-    # print("=" * 50)
-
-    # print("building model...")
-    # model = build_model(input_shape)
-    # print("model built successfully")
-
-    # print("=" * 50)
-
-    # print("training model...")
-    # trained_model = train_model(
-    #     model, training_data=training_data, validation_data=validation_data
-    # )
-    # print("training complete")
-
-    # print("=" * 50)
-
-    # print("evaluating model...")
-    # evaluate_model(
-    #     trained_model, testing_data=testing_data, symbol=symbol, scaler=y_scaler
-    # )
-    # print("")
-
-    # print("=" * 50)
-    # predict_future(
-    #     trained_model,
-    #     data=data,
-    #     lookback=lookback,
-    #     symbol=symbol,
-    #     scaler=y_scaler,
-    # )
-    # print("predicting future values...")
+    predict_future(
+        trained_model,
+        data=data,
+        lookback=lookback,
+        symbol=symbol,
+        scaler=scaler,
+    )
+    print("predicting future values...")
 
 
 if __name__ == "__main__":

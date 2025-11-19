@@ -1,29 +1,34 @@
+import matplotlib.pyplot as plt
+import numpy as np
 from tensorflow.keras.layers import (
     Input,
     Dense,
     Dropout,
     GlobalAveragePooling1D,
 )
-from model import TransformerEncoder, LearnedPositionalEncoding
+
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
+
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from sklearn.metrics import r2_score
-import matplotlib.pyplot as plt
-import numpy as np
 from file_utils import get_data_filepath
+from model import TransformerEncoder, LearnedPositionalEncoding
 
 
 def build_model(input_shape):
-    embed_dim = 128
-    num_heads = 8
-    ff_dim = 512
-    num_layers = 4
+    embed_dim = 64
+    num_heads = 4
+    ff_dim = 256
+    num_layers = 2
     dropout_rate = 0.1
-    learning_rate = 0.001
+    learning_rate = 0.0001
 
     transformer_encoder = TransformerEncoder(
-        num_layers=num_layers, embed_dim=embed_dim, num_heads=num_heads, ff_dim=ff_dim
+        num_layers=num_layers,
+        embed_dim=embed_dim,
+        num_heads=num_heads,
+        ff_dim=ff_dim,
     )
 
     inputs = Input(shape=input_shape)
@@ -43,9 +48,44 @@ def build_model(input_shape):
     return model
 
 
+def tune_batch_size(training_data, validation_data, callbacks):
+    best_batch_size = None
+    X_train, y_train = training_data
+
+    results = {}
+
+    print("Tuning batch size...")
+
+    for batch_size in [8, 16]:
+        print(f"Testing batch size: {batch_size}")
+
+        model = build_model(input_shape=X_train.shape[1:])
+
+        history = model.fit(
+            X_train,
+            y_train,
+            epochs=20,
+            batch_size=batch_size,
+            validation_data=validation_data,
+            callbacks=callbacks,
+            verbose=0,
+        )
+
+        best_val_loss = min(history.history["val_loss"])
+        results[batch_size] = best_val_loss
+
+        print(
+            f"Average validation loss for batch size {batch_size}: {best_val_loss:.4f}"
+        )
+
+    best_batch_size = min(results, key=results.get)
+    print(f"Best batch size: {best_batch_size}")
+
+    return best_batch_size
+
+
 def train_model(model, training_data, validation_data):
     epochs = 100
-    batch_size = 8
 
     callbacks = [
         EarlyStopping(monitor="val_loss", patience=10, restore_best_weights=True),
@@ -57,6 +97,14 @@ def train_model(model, training_data, validation_data):
             cooldown=2,
         ),
     ]
+
+    # batch_size = tune_batch_size(
+    #     training_data=training_data,
+    #     validation_data=validation_data,
+    #     callbacks=callbacks,
+    # )
+
+    batch_size = 8
 
     X_train, y_train = training_data
 
@@ -79,12 +127,12 @@ def evaluate_model(model, testing_data, symbol, scaler):
     y_pred = model.predict(X_test)
 
     y_pred_inverse = scaler.inverse_transform(y_pred.reshape(-1, 1)).flatten()
-    y_true_inverse = scaler.inverse_transform(y_test.reshape(-1, 1)).flatten()
+    y_test_inverse = scaler.inverse_transform(y_test.reshape(-1, 1)).flatten()
 
-    r2 = r2_score(y_true_inverse, y_pred_inverse)
+    r2 = r2_score(y_test_inverse, y_pred_inverse)
 
     plt.figure(figsize=(10, 5))
-    plt.plot(y_true_inverse, label="True Values", alpha=0.7)
+    plt.plot(y_test_inverse, label="True Values", alpha=0.7)
     plt.plot(y_pred_inverse, label="Predicted Values", linestyle="--")
     plt.title(f"True vs Predicted Values")
     plt.xlabel("Time Steps")
@@ -118,9 +166,8 @@ def predict_future(
         current_sequence = input_sequence.copy()
 
         for _ in range(num_future_steps):
-            next_value_tf = model(current_sequence, training=True)
-            next_value = next_value_tf.numpy()
-            predicted_values.append(next_value.flatten()[0])
+            next_value = model(current_sequence, training=True).numpy().flatten()[0]
+            predicted_values.append(next_value)
             current_sequence = np.append(
                 current_sequence[:, 1:, :], next_value.reshape(1, 1, 1), axis=1
             )
@@ -176,7 +223,7 @@ def predict_future(
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     path = get_data_filepath(symbol)
-    plt.savefig(f"{path}/evaluation.png", dpi=300, bbox_inches="tight")
+    plt.savefig(f"{path}/prediction.png", dpi=300, bbox_inches="tight")
 
     return {
         "mean": mean_predictions_inverse,
