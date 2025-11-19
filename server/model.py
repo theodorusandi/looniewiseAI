@@ -1,5 +1,5 @@
-import tensorflow as tf
 from tensorflow.keras.layers import Layer, Dense, LayerNormalization, Dropout
+import tensorflow as tf
 
 
 class MultiHeadSelfAttention(Layer):
@@ -18,8 +18,6 @@ class MultiHeadSelfAttention(Layer):
         Number of parallel attention heads. Must evenly divide embed_dim.
     dropout : float, default=0.1
         Dropout rate applied to attention weights for regularization.
-    kernel_regularizer : keras.regularizers.Regularizer, optional
-        Regularizer function applied to the dense layer kernels.
 
     Raises
     ------
@@ -38,7 +36,7 @@ class MultiHeadSelfAttention(Layer):
     Vaswani et al., "Attention is All You Need", NeurIPS 2017.
     """
 
-    def __init__(self, embed_dim, num_heads=8, dropout=0.1, kernel_regularizer=None):
+    def __init__(self, embed_dim, num_heads=8, dropout=0.1):
         super(MultiHeadSelfAttention, self).__init__()
 
         if embed_dim % num_heads != 0:
@@ -48,10 +46,10 @@ class MultiHeadSelfAttention(Layer):
         self.num_heads = num_heads
         self.projection_dim = embed_dim // num_heads
         self.scale = tf.math.sqrt(tf.cast(self.projection_dim, tf.float32))
-        self.query_dense = Dense(embed_dim, kernel_regularizer=kernel_regularizer)
-        self.key_dense = Dense(embed_dim, kernel_regularizer=kernel_regularizer)
-        self.value_dense = Dense(embed_dim, kernel_regularizer=kernel_regularizer)
-        self.combine_heads = Dense(embed_dim, kernel_regularizer=kernel_regularizer)
+        self.query_dense = Dense(embed_dim)
+        self.key_dense = Dense(embed_dim)
+        self.value_dense = Dense(embed_dim)
+        self.combine_heads = Dense(embed_dim)
 
         self.attention_dropout = Dropout(dropout)
 
@@ -107,10 +105,6 @@ class TransformerBlock(Layer):
         Dimensionality of the hidden layer in the feedforward network.
     dropout : float, default=0.1
         Dropout rate applied after attention and feedforward sublayers.
-    self_attention_reg : keras.regularizers.Regularizer, optional
-        Regularizer function applied to the attention layer kernels.
-    ff_reg : keras.regularizers.Regularizer, optional
-        Regularizer function applied to the feedforward network kernels.
 
     Notes
     -----
@@ -133,17 +127,13 @@ class TransformerBlock(Layer):
         num_heads,
         ff_dim,
         dropout=0.1,
-        self_attention_reg=None,
-        ff_reg=None,
     ):
         super(TransformerBlock, self).__init__()
-        self.att = MultiHeadSelfAttention(
-            embed_dim, num_heads, dropout=dropout, kernel_regularizer=self_attention_reg
-        )
+        self.att = MultiHeadSelfAttention(embed_dim, num_heads, dropout=dropout)
         self.ffn = tf.keras.Sequential(
             [
-                Dense(ff_dim, activation="gelu", kernel_regularizer=ff_reg),
-                Dense(embed_dim, kernel_regularizer=ff_reg),
+                Dense(ff_dim, activation="gelu"),
+                Dense(embed_dim),
             ]
         )
 
@@ -185,10 +175,6 @@ class TransformerEncoder(Layer):
         Dimensionality of the feedforward network hidden layer.
     dropout : float, default=0.1
         Dropout rate applied in each transformer block.
-    self_attention_reg : keras.regularizers.Regularizer, optional
-        Regularizer for attention layer weights.
-    ff_reg : keras.regularizers.Regularizer, optional
-        Regularizer for feedforward network weights.
 
     Notes
     -----
@@ -200,16 +186,7 @@ class TransformerEncoder(Layer):
     Vaswani et al., "Attention is All You Need", NeurIPS 2017.
     """
 
-    def __init__(
-        self,
-        num_layers,
-        embed_dim,
-        num_heads,
-        ff_dim,
-        dropout=0.1,
-        self_attention_reg=None,
-        ff_reg=None,
-    ):
+    def __init__(self, num_layers, embed_dim, num_heads, ff_dim, dropout=0.1):
         super(TransformerEncoder, self).__init__()
         self.num_layers = num_layers
         self.embed_dim = embed_dim
@@ -220,8 +197,6 @@ class TransformerEncoder(Layer):
                 num_heads=num_heads,
                 ff_dim=ff_dim,
                 dropout=dropout,
-                self_attention_reg=self_attention_reg,
-                ff_reg=ff_reg,
             )
             for _ in range(num_layers)
         ]

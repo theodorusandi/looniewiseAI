@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.metrics import r2_score
 from tensorflow.keras.layers import (
     Input,
     Dense,
@@ -9,9 +10,8 @@ from tensorflow.keras.layers import (
 
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
-
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from sklearn.metrics import r2_score
+
 from file_utils import get_data_filepath
 from model import TransformerEncoder, LearnedPositionalEncoding
 
@@ -21,7 +21,8 @@ def build_model(input_shape):
     num_heads = 4
     ff_dim = 256
     num_layers = 2
-    dropout_rate = 0.1
+
+    final_dropout_rate = 0.1
     learning_rate = 0.0001
 
     transformer_encoder = TransformerEncoder(
@@ -37,7 +38,7 @@ def build_model(input_shape):
 
     encoder_outputs = transformer_encoder(x)
     flatten = GlobalAveragePooling1D()(encoder_outputs)
-    dropout = Dropout(dropout_rate)(flatten)
+    dropout = Dropout(final_dropout_rate)(flatten)
     outputs = Dense(1)(dropout)
 
     model = Model(inputs, outputs)

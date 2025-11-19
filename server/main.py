@@ -20,9 +20,10 @@ def main():
         data, lookback=lookback
     )
 
-    # input_shape = (lookback, 1)
+    # (lookback, features)
+    input_shape = (lookback, 1)
 
-    # model = build_model(input_shape)
+    model = build_model(input_shape)
 
     # trained_model = train_model(
     #     model, training_data=training_data, validation_data=validation_data
