@@ -123,7 +123,7 @@ def train_model(model, training_data, validation_data):
     return model
 
 
-def evaluate_model(model, testing_data, symbol, scaler):
+def evaluate_model(model, testing_data, symbol, scaler, lookback):
     print("Evaluating model...")
 
     X_test, y_test = testing_data
@@ -140,8 +140,18 @@ def evaluate_model(model, testing_data, symbol, scaler):
     plt.title(f"True vs Predicted Values")
     plt.xlabel("Time Steps")
     plt.legend()
+    # Add R² score as text on the plot
+    plt.text(
+        0.02,
+        0.98,
+        f"R² Score: {r2:.3f}",
+        transform=plt.gca().transAxes,
+        fontsize=10,
+        verticalalignment="top",
+        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+    )
     path = get_data_filepath(symbol)
-    plt.savefig(f"{path}/evaluation.png", dpi=300, bbox_inches="tight")
+    plt.savefig(f"{path}/evaluation_{lookback}day(s).png", dpi=300, bbox_inches="tight")
 
     print(f"R² Score: {r2:.3f}")
 
@@ -157,7 +167,7 @@ def predict_future(
     print("Predicting future values with uncertainty estimation...")
 
     n_simulations = 100
-    num_future_steps = 5
+    num_future_steps = 10
 
     all_predictions = []
 
@@ -186,6 +196,13 @@ def predict_future(
     ci_lower_inverse = scaler.inverse_transform(ci_lower.reshape(-1, 1)).flatten()
     ci_upper_inverse = scaler.inverse_transform(ci_upper.reshape(-1, 1)).flatten()
 
+    # Calculate average return
+    returns = np.diff(mean_predictions_inverse) / mean_predictions_inverse[:-1]
+    average_return = np.mean(returns)
+    print(
+        f"Average return for next {num_future_steps} days: {average_return:.4f} ({average_return*100:.2f}%)"
+    )
+
     plt.figure(figsize=(10, 5))
     time_steps = np.arange(1, num_future_steps + 1)
 
@@ -213,6 +230,16 @@ def predict_future(
         alpha=0.2,
         color="blue",
         label="95% Confidence Interval",
+    )
+
+    plt.text(
+        0.02,
+        0.98,
+        f"Avg Return: {average_return:.4f} ({average_return*100:.2f}%)",
+        transform=plt.gca().transAxes,
+        fontsize=10,
+        verticalalignment="top",
+        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
     )
 
     plt.xlabel("Future Time Steps", fontsize=12)

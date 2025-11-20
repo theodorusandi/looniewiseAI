@@ -30,7 +30,11 @@ def main():
     )
 
     r2 = evaluate_model(
-        trained_model, testing_data=(X_test, y_test), symbol=symbol, scaler=scaler
+        trained_model,
+        testing_data=(X_test, y_test),
+        symbol=symbol,
+        scaler=scaler,
+        lookback=lookback,
     )
 
     if r2 > 0.55:
