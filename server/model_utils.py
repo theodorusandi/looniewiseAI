@@ -123,17 +123,9 @@ def train_model(model, training_data, validation_data):
     return model
 
 
-def evaluate_model(model, testing_data, symbol, scaler, lookback):
-    print("Evaluating model...")
-
-    X_test, y_test = testing_data
-
-    y_pred = model.predict(X_test)
-
-    y_pred_inverse = scaler.inverse_transform(y_pred.reshape(-1, 1)).flatten()
-    y_test_inverse = scaler.inverse_transform(y_test.reshape(-1, 1)).flatten()
-
-    r2 = r2_score(y_test_inverse, y_pred_inverse)
+def plot_evaluation_results(y_test_inverse, y_pred_inverse, r2, symbol, lookback):
+    import matplotlib.pyplot as plt
+    from file_utils import get_data_filepath
 
     plt.plot(y_test_inverse, label="True Values", alpha=0.7)
     plt.plot(y_pred_inverse, label="Predicted Values", linestyle="--")
@@ -151,7 +143,25 @@ def evaluate_model(model, testing_data, symbol, scaler, lookback):
         bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
     )
     path = get_data_filepath(symbol)
-    plt.savefig(f"{path}/evaluation_{lookback}day(s).png", dpi=300, bbox_inches="tight")
+    plt.savefig(
+        f"{path}/evaluation_{lookback}day(s)_EMA.png", dpi=300, bbox_inches="tight"
+    )
+    plt.close()
+
+
+def evaluate_model(model, testing_data, symbol, scaler, lookback):
+    print("Evaluating model...")
+
+    X_test, y_test = testing_data
+
+    y_pred = model.predict(X_test)
+
+    y_pred_inverse = scaler.inverse_transform(y_pred.reshape(-1, 1)).flatten()
+    y_test_inverse = scaler.inverse_transform(y_test.reshape(-1, 1)).flatten()
+
+    r2 = r2_score(y_test_inverse, y_pred_inverse)
+
+    plot_evaluation_results(y_test_inverse, y_pred_inverse, r2, symbol, lookback)
 
     print(f"R² Score: {r2:.3f}")
 
